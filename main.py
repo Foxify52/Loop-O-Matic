@@ -17,12 +17,11 @@ def analyze_beats(y, sr, beat_times):
     for beat_time in beat_times:
         beat_sample = librosa.time_to_frames(beat_time, sr=sr)
         beat_feature = log_S[:, beat_sample]
-        beat_histogram = np.histogram(beat_feature, bins=10)[0]
-        beat_features.append(np.concatenate([beat_feature, beat_histogram]))
+        beat_features.append(beat_feature)
     return np.array(beat_features)
 
 def create_song_graph(beat_features):
-    distance_matrix = cdist(beat_features, beat_features, 'cosine')
+    distance_matrix = cdist(beat_features, beat_features, "cosine")
     graph = nx.from_numpy_array(distance_matrix)
     return graph
 
@@ -70,14 +69,16 @@ def compute_song(y, sr, graph, beat_times, jumps, beat_match_length, jump_interv
     return final_song
 
 audio_file = "" # Set your song's file path here. A valid example is C:\\users\\music\\ballin.mp3
-base_sr = librosa.get_samplerate(audio_file)
-y, sr = librosa.load(audio_file, sr=base_sr, mono=False)
-beat_times = decompose_beats(y, sr)
-beat_features = analyze_beats(y, sr, beat_times)
-graph = create_song_graph(beat_features)
-song_array = compute_song(y, sr, graph, beat_times, 10, 45, 20).T 
-# Don't mess with first 4 values of the compute song function. Last 3 can be configured and control the following:
-# The number of times the program can jump around the song,.
-# The number of concecutive beats that must match before a jump can take place.
-# The number of times jumps are guaranteed to be skipped before the next jump is allowed to take place.
-sf.write('output.mp3', song_array, sr)
+jumps = 10 # The number of times the program can jump around the song.
+beat_match_length = 45 # The number of concecutive beats that must match before a jump can take place.
+jump_interval = 20 # The number of times jumps are guaranteed to be skipped before the next jump is allowed to take place.
+
+if audio_file == "":
+    print("Audio file path must not be empty.")
+else:
+    y, sr = librosa.load(path=audio_file, sr=librosa.get_samplerate(path=audio_file), mono=False)
+    beat_times = decompose_beats(y, sr)
+    beat_features = analyze_beats(y, sr, beat_times)
+    graph = create_song_graph(beat_features)
+    song_array = compute_song(y, sr, graph, beat_times).T 
+    sf.write("output.mp3", song_array, sr)
