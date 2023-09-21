@@ -21,7 +21,7 @@ def analyze_beats(y, sr, beat_times):
     return np.array(beat_features)
 
 def create_song_graph(beat_features):
-    distance_matrix = cdist(beat_features, beat_features, "cosine")
+    distance_matrix = cdist(beat_features, beat_features, "chebyshev")
     graph = nx.from_numpy_array(distance_matrix)
     return graph
 
@@ -80,5 +80,5 @@ else:
     beat_times = decompose_beats(y, sr)
     beat_features = analyze_beats(y, sr, beat_times)
     graph = create_song_graph(beat_features)
-    song_array = compute_song(y, sr, graph, beat_times).T 
+    song_array = compute_song(y, sr, graph, beat_times, jumps, beat_match_length, jump_interval).T 
     sf.write("output.mp3", song_array, sr)
