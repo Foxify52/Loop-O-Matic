@@ -25,6 +25,22 @@ def create_song_graph(beat_features):
     graph = nx.from_numpy_array(distance_matrix)
     return graph
 
+def find_similar_beats(beat_graph, current_beat, beat_match_length):
+    compare_list, similar_beats = [], []
+    k = 0
+    for i in range(len(beat_graph) - (beat_match_length - 1)):
+        sequence = []
+        for j in range(beat_match_length):
+            if i + j != current_beat:
+                sequence.append(beat_graph[i + j])
+        compare_list.append(sequence)
+    for i in range(len(compare_list)):
+        for i in range(len(compare_list)):
+            if compare_list[k] == compare_list[i] and k!= i:
+                similar_beats.append(compare_list[i])
+        k += 1
+    return similar_beats
+
 def compute_song(y, sr, graph, beat_times, jumps, beat_match_length, jump_interval):
     song = []
     current_beat = 0
@@ -45,9 +61,21 @@ def compute_song(y, sr, graph, beat_times, jumps, beat_match_length, jump_interv
         if len(similar_beats) > 0:
             potential_jumps += 1
             if random.random() < 0.2 and potential_jumps >= jump_interval:
-                similar_beats = [beat for beat in similar_beats if len(set(graph[current_beat]) & set(graph[beat])) >= beat_match_length and beat != current_beat]
+                sequences_current_beat = find_similar_beats(graph[current_beat], current_beat, beat_match_length)
+                sequences_beat = {beat: find_similar_beats(graph[beat], beat, beat_match_length) for beat in similar_beats}
+                for beat in similar_beats:
+                    if beat == current_beat:
+                        continue
+                    for a in sequences_current_beat:
+                        for b in sequences_beat[beat]:
+                            for c, d in zip(a, b):
+                                if abs(c['weight'] - d['weight']) >= 10**(-4):
+                                    break
+                            else:
+                                similar_beats.append(beat)
+                                break
                 if len(similar_beats) > 0:
-                    current_beat = min(similar_beats, key=lambda x: np.linalg.norm(beat_features[current_beat] - beat_features[x]))
+                    current_beat = min(similar_beats, key=lambda x: np.linalg.norm(beat_features[current_beat] - beat_features[x])) + 1
                     potential_jumps = 0
                     jump_count += 1
                 else:
@@ -69,9 +97,9 @@ def compute_song(y, sr, graph, beat_times, jumps, beat_match_length, jump_interv
     return final_song
 
 audio_file = "" # Set your song's file path here. A valid example is C:\\users\\music\\ballin.mp3
-jumps = 10 # The number of times the program can jump around the song.
-beat_match_length = 45 # The number of concecutive beats that must match before a jump can take place.
-jump_interval = 20 # The number of times jumps are guaranteed to be skipped before the next jump is allowed to take place.
+jumps = 15 # The number of times the program can jump around the song.
+beat_match_length = 10 # The number of concecutive beats that must match before a jump can take place.
+jump_interval = 25 # The number of times jumps are guaranteed to be skipped before the next jump is allowed to take place.
 
 if audio_file == "":
     print("Audio file path must not be empty.")
