@@ -27,7 +27,6 @@ def create_song_graph(beat_features):
 
 def find_similar_beats(beat_graph, current_beat, beat_match_length):
     compare_list, similar_beats = [], []
-    k = 0
     for i in range(len(beat_graph) - (beat_match_length - 1)):
         sequence = []
         for j in range(beat_match_length):
@@ -35,10 +34,9 @@ def find_similar_beats(beat_graph, current_beat, beat_match_length):
                 sequence.append(beat_graph[i + j])
         compare_list.append(sequence)
     for i in range(len(compare_list)):
-        for i in range(len(compare_list)):
-            if compare_list[k] == compare_list[i] and k!= i:
+        for j in range(i+1, len(compare_list)):
+            if compare_list[i] == compare_list[j]:
                 similar_beats.append(compare_list[i])
-        k += 1
     return similar_beats
 
 def compute_song(y, sr, graph, beat_times, jumps, beat_match_length, jump_interval):
@@ -46,19 +44,15 @@ def compute_song(y, sr, graph, beat_times, jumps, beat_match_length, jump_interv
     current_beat = 0
     potential_jumps = 0
     jump_count = 0
-    while jump_count <= jumps:
+    while jump_count <= jumps or current_beat < len(beat_times) - 1:
         if current_beat >= len(beat_times) - 1:
             current_beat = 0
         start_time = int(beat_times[current_beat] * sr)
-        end_time = int(beat_times[current_beat + 1] * sr)
-        if end_time <= len(y[0]):
-            song.append(y[:, start_time:end_time])
-        else:
-            song.append(y[:, start_time:])
-            current_beat = 0
-        print(f"Jump count: {jump_count}, Current beat: {current_beat}, Passed potential jumps: {potential_jumps}")
+        end_time = int(beat_times[current_beat + 1] * sr) if current_beat < len(beat_times) - 1 else len(y[0])
+        song.append(y[:, start_time:end_time])
+        print(f"{min(int((jump_count/jumps)*100), 100)}% processed. Please wait.", end="\r")
         similar_beats = [node for node in graph.neighbors(current_beat)]
-        if len(similar_beats) > 0:
+        if len(similar_beats) > 0 and jump_count <= jumps:
             potential_jumps += 1
             if random.random() < 0.2 and potential_jumps >= jump_interval:
                 sequences_current_beat = find_similar_beats(graph[current_beat], current_beat, beat_match_length)
@@ -69,7 +63,7 @@ def compute_song(y, sr, graph, beat_times, jumps, beat_match_length, jump_interv
                     for a in sequences_current_beat:
                         for b in sequences_beat[beat]:
                             for c, d in zip(a, b):
-                                if abs(c['weight'] - d['weight']) >= 10**(-4):
+                                if abs(c['weight'] - d['weight']) >= 10**(-8):
                                     break
                             else:
                                 similar_beats.append(beat)
@@ -84,15 +78,6 @@ def compute_song(y, sr, graph, beat_times, jumps, beat_match_length, jump_interv
                 current_beat += 1
         else:
             current_beat += 1
-    while current_beat < len(beat_times) - 1:
-        start_time = int(beat_times[current_beat] * sr)
-        end_time = int(beat_times[current_beat + 1] * sr)
-        if end_time <= len(y[0]):
-            song.append(y[:, start_time:end_time])
-        else:
-            song.append(y[:, start_time:])
-            current_beat = 0
-        current_beat += 1
     final_song = np.concatenate(song, axis=1)
     return final_song
 
@@ -109,4 +94,6 @@ else:
     beat_features = analyze_beats(y, sr, beat_times)
     graph = create_song_graph(beat_features)
     song_array = compute_song(y, sr, graph, beat_times, jumps, beat_match_length, jump_interval).T 
+    print("Song processing complete. Now writing to file.")
     sf.write("output.mp3", song_array, sr)
+    print("Done.")

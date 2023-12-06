@@ -1,5 +1,5 @@
 # Loop-O-Matic
-This awful piece of software is the loop-o-matic. It's a simple program that allows you to create a meh quality extention of any given song. This was my sad attempt at making a stripped down clone of the incredible [Eternal Jukebox](https://jukebox.davi.gq/jukebox_index.html) that didn't rely on spotify or youtube.
+This piece of software is the loop-o-matic. It's a simple program that allows you to create a somewhat decent quality extention of any given song. This was my attempt at making a stripped down clone of the incredible [Eternal Jukebox](https://jukebox.davi.gq/jukebox_index.html) that didn't rely on spotify or youtube. The quality of the algorithm has since been improved, but it's still not perfect.
 
 ## Usage
 Run `poetry install --no-root`.
@@ -7,9 +7,8 @@ Run `poetry install --no-root`.
 Run `main.py`. Make sure you fill out the settings. They have comments telling you what goes where.
 
 ## Known Issues
-The jumps are not perfect. They are a little bit off.
-It also has issues with the beats being played twice. This is because the beat detection within librosa is a little bit off which throws the whole algorithm off.
-Nothing I know what to do about either one of these issues so if you do, feel free to leave a PR.
+The jumps are sometimes happening between two segments that are not similar. I'm not sure why this is happening despite the precision of the jump detection.
+It doesn't play nice with some songs. I'm not sure why. I think it has something to do with librosa.
 
 ## Licensing
    Copyright 2023 Foxify52
