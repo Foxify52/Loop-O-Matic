@@ -21,7 +21,7 @@ def analyze_beats(y, sr, beat_times):
     return np.array(beat_features)
 
 def create_song_graph(beat_features):
-    distance_matrix = cdist(beat_features, beat_features, "chebyshev")
+    distance_matrix = cdist(beat_features, beat_features, "correlation")
     graph = nx.from_numpy_array(distance_matrix)
     return graph
 
@@ -96,7 +96,7 @@ def compute_song(y, sr, graph, beat_times, jumps, beat_match_length, jump_interv
     final_song = np.concatenate(song, axis=1)
     return final_song
 
-audio_file = "" # Set your song's file path here. A valid example is C:\\users\\music\\ballin.mp3
+audio_file = "" # The file path to your song. Can be formats other than mp3. A valid example is C:\\users\\music\\ballin.mp3
 jumps = 15 # The number of times the program can jump around the song.
 beat_match_length = 10 # The number of concecutive beats that must match before a jump can take place.
 jump_interval = 25 # The number of times jumps are guaranteed to be skipped before the next jump is allowed to take place.

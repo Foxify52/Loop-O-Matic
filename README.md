@@ -2,7 +2,7 @@
 This awful piece of software is the loop-o-matic. It's a simple program that allows you to create a meh quality extention of any given song. This was my sad attempt at making a stripped down clone of the incredible [Eternal Jukebox](https://jukebox.davi.gq/jukebox_index.html) that didn't rely on spotify or youtube.
 
 ## Usage
-Run `pip install -r requirements.txt`.
+Run `poetry install --no-root`.
 
 Run `main.py`. Make sure you fill out the settings. They have comments telling you what goes where.
 
