@@ -4,26 +4,19 @@ import networkx as nx
 import soundfile as sf
 from scipy.spatial.distance import cdist
 
-def decompose_beats(y, sr):
-    onset_env = librosa.onset.onset_strength(y=np.mean(y, axis=0), sr=sr)
-    tempo, beat_frames = librosa.beat.beat_track(onset_envelope=onset_env, sr=sr)
+def analyze_song(y, sr):
+    onset_env = librosa.onset.onset_strength(y=np.mean(y, 0), sr=sr)
+    _, beat_frames = librosa.beat.beat_track(y=y, sr=sr, onset_envelope=onset_env)
     beat_times = librosa.frames_to_time(beat_frames, sr=sr)
-    return beat_times
 
-def analyze_beats(y, sr, beat_times):
-    S = librosa.feature.melspectrogram(y=np.mean(y, axis=0), sr=sr, n_mels=128)
-    log_S = librosa.amplitude_to_db(S, ref=np.max)
+    C = librosa.feature.chroma_cqt(y=np.mean(y, 0), sr=sr)
     beat_features = []
     for beat_time in beat_times:
         beat_sample = librosa.time_to_frames(beat_time, sr=sr)
-        beat_feature = log_S[:, beat_sample]
+        beat_feature = C[:, beat_sample]
         beat_features.append(beat_feature)
-    return np.array(beat_features)
-
-def create_song_graph(beat_features):
-    distance_matrix = cdist(beat_features, beat_features, "correlation")
-    graph = nx.from_numpy_array(distance_matrix)
-    return graph
+    
+    return beat_times, np.array(beat_features)
 
 def find_similar_beats(beat_graph, current_beat, beat_match_length):
     compare_list, similar_beats = [], []
@@ -39,11 +32,8 @@ def find_similar_beats(beat_graph, current_beat, beat_match_length):
                 similar_beats.append(compare_list[i])
     return similar_beats
 
-def compute_song(y, sr, graph, beat_times, jumps, beat_match_length, jump_interval):
-    song = []
-    current_beat = 0
-    potential_jumps = 0
-    jump_count = 0
+def compute_jumps(y, sr, graph, beat_times, jumps, beat_match_length, jump_interval):
+    song, current_beat, potential_jumps, jump_count = [], 0, 0, 0
     while jump_count <= jumps or current_beat < len(beat_times) - 1:
         if current_beat >= len(beat_times) - 1:
             current_beat = 0
@@ -63,11 +53,11 @@ def compute_song(y, sr, graph, beat_times, jumps, beat_match_length, jump_interv
                     for a in sequences_current_beat:
                         for b in sequences_beat[beat]:
                             for c, d in zip(a, b):
-                                if abs(c['weight'] - d['weight']) >= 10**(-8):
+                                if abs(c['weight'] - d['weight']) >= 10**(-32):
                                     break
-                            else:
-                                similar_beats.append(beat)
-                                break
+                                else:
+                                    similar_beats.append(beat)
+                                    break
                 if len(similar_beats) > 0:
                     current_beat = min(similar_beats, key=lambda x: np.linalg.norm(beat_features[current_beat] - beat_features[x])) + 1
                     potential_jumps = 0
@@ -78,8 +68,7 @@ def compute_song(y, sr, graph, beat_times, jumps, beat_match_length, jump_interv
                 current_beat += 1
         else:
             current_beat += 1
-    final_song = np.concatenate(song, axis=1)
-    return final_song
+    return np.concatenate(song, axis=1)
 
 audio_file = "" # The file path to your song. Can be formats other than mp3. A valid example is C:\\users\\music\\ballin.mp3
 jumps = 15 # The number of times the program can jump around the song.
@@ -89,11 +78,10 @@ jump_interval = 25 # The number of times jumps are guaranteed to be skipped befo
 if audio_file == "":
     print("Audio file path must not be empty.")
 else:
-    y, sr = librosa.load(path=audio_file, sr=librosa.get_samplerate(path=audio_file), mono=False)
-    beat_times = decompose_beats(y, sr)
-    beat_features = analyze_beats(y, sr, beat_times)
-    graph = create_song_graph(beat_features)
-    song_array = compute_song(y, sr, graph, beat_times, jumps, beat_match_length, jump_interval).T 
+    y, sr = librosa.load(path=audio_file, sr=librosa.get_samplerate(audio_file), mono=False)
+    beat_times, beat_features = analyze_song(y, sr)
+    graph = nx.from_numpy_array(cdist(beat_features, beat_features, "euclidean"), create_using=nx.Graph())
+    song_array = compute_jumps(y, sr, graph, beat_times, jumps, beat_match_length, jump_interval).T (y, sr, graph, beat_times, 30, 35, 40).T 
     print("Song processing complete. Now writing to file.")
     sf.write("output.mp3", song_array, sr)
     print("Done.")
