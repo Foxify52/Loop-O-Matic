@@ -2,6 +2,7 @@ import random, librosa
 import numpy as np
 import networkx as nx
 import soundfile as sf
+from collections import Counter
 from scipy.spatial.distance import cdist
 
 def analyze_song(y, sr):
@@ -18,19 +19,19 @@ def analyze_song(y, sr):
     
     return beat_times, np.array(beat_features)
 
-def find_similar_beats(beat_graph, current_beat, beat_match_length):
-    compare_list, similar_beats = [], []
-    for i in range(len(beat_graph) - (beat_match_length - 1)):
-        sequence = []
-        for j in range(beat_match_length):
-            if i + j != current_beat:
-                sequence.append(beat_graph[i + j])
-        compare_list.append(sequence)
-    for i in range(len(compare_list)):
-        for j in range(i+1, len(compare_list)):
-            if compare_list[i] == compare_list[j]:
-                similar_beats.append(compare_list[i])
-    return similar_beats
+def find_similar_beats(graph, beat_match_length):
+    indices = list(graph.keys())
+    weights = [graph[node]['weight'] for node in indices]
+    sequences = []
+
+    for i in range(len(indices) - (beat_match_length - 1)):
+        sequence_indices = indices[i:i + beat_match_length]
+        sequence_weights = weights[i:i + beat_match_length]
+        sequence = tuple(zip(sequence_indices, sequence_weights))
+        sequences.append(sequence)
+
+    sequence_counts = Counter(sequences)
+    return [seq for seq, count in sequence_counts.items() if count > 1]
 
 def compute_jumps(y, sr, graph, beat_times, jumps, beat_match_length, jump_interval):
     song, current_beat, potential_jumps, jump_count = [], 0, 0, 0
@@ -45,15 +46,15 @@ def compute_jumps(y, sr, graph, beat_times, jumps, beat_match_length, jump_inter
         if len(similar_beats) > 0 and jump_count <= jumps:
             potential_jumps += 1
             if random.random() < 0.2 and potential_jumps >= jump_interval:
-                sequences_current_beat = find_similar_beats(graph[current_beat], current_beat, beat_match_length)
-                sequences_beat = {beat: find_similar_beats(graph[beat], beat, beat_match_length) for beat in similar_beats}
+                sequences_current_beat = find_similar_beats(graph[current_beat], beat_match_length)
+                sequences_beat = {beat: find_similar_beats(graph[beat], beat_match_length) for beat in similar_beats}
                 for beat in similar_beats:
                     if beat == current_beat:
                         continue
                     for a in sequences_current_beat:
                         for b in sequences_beat[beat]:
                             for c, d in zip(a, b):
-                                if abs(c['weight'] - d['weight']) >= 10**(-32):
+                                if abs(c["weight"] - d["weight"]) >= 10**(-32):
                                     break
                                 else:
                                     similar_beats.append(beat)
